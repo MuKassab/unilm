@@ -26,7 +26,6 @@ from src.pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from src.nn.data_parallel import DataParallelImbalance
 import src.biunilm.seq2seq_loader as seq2seq_loader
-import biunilm.seq2seq_loader as seq2seq_loader
 
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
