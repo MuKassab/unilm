@@ -17,11 +17,15 @@ from torch.utils.data.distributed import DistributedSampler
 import random
 import pickle
 
-from pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
-from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
-from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
+import sys
+sys.path.append("/content/unilm/unilmv1")
 
-from nn.data_parallel import DataParallelImbalance
+from src.pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
+from src.pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
+from src.pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
+
+from src.nn.data_parallel import DataParallelImbalance
+import src.biunilm.seq2seq_loader as seq2seq_loader
 import biunilm.seq2seq_loader as seq2seq_loader
 
 
