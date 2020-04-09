@@ -18,7 +18,7 @@ import random
 import pickle
 
 import sys
-sys.path.append("/home/ubuntu/unilm/unilmv1")
+sys.path.append("/content/unilm/unilmv1")
 
 from src.pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
 from src.pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
