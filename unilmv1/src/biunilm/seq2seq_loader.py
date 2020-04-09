@@ -4,7 +4,7 @@ import math
 import torch
 
 import sys
-sys.path.append("/content/unilm/unilmv1")
+sys.path.append("/home/ubuntu/unilm/unilmv1")
 
 from src.biunilm.loader_utils import get_random_word, batch_list_to_batch_tensors, Pipeline
 
