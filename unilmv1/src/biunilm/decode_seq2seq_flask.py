@@ -95,7 +95,7 @@ def main(input_list):
                         type=str, help="output file")
     parser.add_argument("--split", type=str, default="test",
                         help="Data split (train/val/test).")
-    parser.add_argument('--tokenized_input', action='store_true',default=True,
+    parser.add_argument('--tokenized_input', action='store_true',default=False,
                         help="Whether the input is tokenized.")
     parser.add_argument('--seed', type=int, default=123,
                         help="random seed for initialization")
@@ -307,8 +307,9 @@ def main(input_list):
 def output():
     # the request should be array of strings
     input_list = request.get_json('text')['text']
-
-    print("\n\n\n" + input_list + "\n\n\n")
+    print("\n\n\n")
+    print(input_list)
+    print("\n\n\n")
     return main(input_list)
 
 
