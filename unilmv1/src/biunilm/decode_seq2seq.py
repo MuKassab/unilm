@@ -84,7 +84,7 @@ def main():
     parser.add_argument("--output_file", type=str, help="output file")
     parser.add_argument("--split", type=str, default="",
                         help="Data split (train/val/test).")
-    parser.add_argument('--tokenized_input', action='store_true',
+    parser.add_argument('--tokenized_input', action='store_true',default=False,
                         help="Whether the input is tokenized.")
     parser.add_argument('--seed', type=int, default=123,
                         help="random seed for initialization")
