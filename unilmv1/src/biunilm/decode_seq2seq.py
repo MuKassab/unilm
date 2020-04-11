@@ -18,7 +18,11 @@ import random
 import pickle
 
 import sys
-sys.path.append("/content/unilm/unilmv1")
+from pathlib import Path
+p = str(Path().absolute())
+p = p[:-12]
+print(p)
+sys.path.append(p)
 
 from src.pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
 from src.pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
