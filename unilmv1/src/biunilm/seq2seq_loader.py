@@ -4,7 +4,11 @@ import math
 import torch
 
 import sys
-sys.path.append("/content/unilm/unilmv1")
+from pathlib import Path
+p = str(Path().absolute())
+p = p[:-12]
+print(p)
+sys.path.append(p)
 
 from src.biunilm.loader_utils import get_random_word, batch_list_to_batch_tensors, Pipeline
 
