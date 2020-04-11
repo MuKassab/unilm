@@ -18,7 +18,6 @@ import random
 import pickle
 
 import sys
-
 sys.path.append(r"D:\Papers\unilm-master\uniLM")
 
 from src.pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
@@ -28,9 +27,6 @@ from src.pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 from src.nn.data_parallel import DataParallelImbalance
 import src.biunilm.seq2seq_loader as seq2seq_loader
 
-from flask import Flask, request, jsonify, render_template
-
-app = Flask(__name__)
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -53,17 +49,14 @@ def ascii_print(text):
     print(text)
 
 
-def main(input_list):
-    global output_lines
+def main():
     parser = argparse.ArgumentParser()
 
     # Required parameters
-    parser.add_argument("--bert_model", default="bert-large-cased", type=str,
-                        # required=True,
+    parser.add_argument("--bert_model", default=None, type=str, required=True,
                         help="Bert pre-trained model selected in the list: bert-base-uncased, "
                              "bert-large-uncased, bert-base-cased, bert-base-multilingual, bert-base-chinese.")
-    parser.add_argument("--model_recover_path",
-                        default="qg_model.bin", type=str,
+    parser.add_argument("--model_recover_path", default=None, type=str,
                         help="The file of fine-tuned pretraining model.")
     parser.add_argument("--max_seq_length", default=512, type=int,
                         help="The maximum total input sequence length after WordPiece tokenization. \n"
@@ -81,15 +74,11 @@ def main(input_list):
                         help="Whether to use 16-bit float precision instead of 32-bit")
     parser.add_argument('--amp', action='store_true',
                         help="Whether to use amp for fp16")
-    parser.add_argument("--input_file",
-                        default="input.txt",
-                        type=str, help="Input file")
+    parser.add_argument("--input_file", type=str, help="Input file")
     parser.add_argument('--subset', type=int, default=0,
                         help="Decode a subset of the input dataset.")
-    parser.add_argument("--output_file",
-                        default="output.txt",
-                        type=str, help="output file")
-    parser.add_argument("--split", type=str, default="test",
+    parser.add_argument("--output_file", type=str, help="output file")
+    parser.add_argument("--split", type=str, default="",
                         help="Data split (train/val/test).")
     parser.add_argument('--tokenized_input', action='store_true',
                         help="Whether the input is tokenized.")
@@ -101,7 +90,7 @@ def main(input_list):
                         help="Use new segment ids for bi-uni-directional LM.")
     parser.add_argument('--new_pos_ids', action='store_true',
                         help="Use new position ids for LMs.")
-    parser.add_argument('--batch_size', type=int, default=16,
+    parser.add_argument('--batch_size', type=int, default=4,
                         help="Batch size for decoding.")
     parser.add_argument('--beam_size', type=int, default=1,
                         help="Beam size for searching")
@@ -154,14 +143,8 @@ def main(input_list):
 
     pair_num_relation = 0
     bi_uni_pipeline = []
-    bi_uni_pipeline.append(
-        seq2seq_loader.Preprocess4Seq2seqDecoder(list(tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids,
-                                                 args.max_seq_length, max_tgt_length=args.max_tgt_length,
-                                                 new_segment_ids=args.new_segment_ids,
-                                                 mode="s2s", num_qkv=args.num_qkv,
-                                                 s2s_special_token=args.s2s_special_token,
-                                                 s2s_add_segment=args.s2s_add_segment,
-                                                 s2s_share_segment=args.s2s_share_segment, pos_shift=args.pos_shift))
+    bi_uni_pipeline.append(seq2seq_loader.Preprocess4Seq2seqDecoder(list(tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids, args.max_seq_length, max_tgt_length=args.max_tgt_length, new_segment_ids=args.new_segment_ids,
+                                                                    mode="s2s", num_qkv=args.num_qkv, s2s_special_token=args.s2s_special_token, s2s_add_segment=args.s2s_add_segment, s2s_share_segment=args.s2s_share_segment, pos_shift=args.pos_shift))
 
     amp_handle = None
     if args.fp16 and args.amp:
@@ -172,7 +155,7 @@ def main(input_list):
     # Prepare model
     cls_num_labels = 2
     type_vocab_size = 6 + \
-                      (1 if args.s2s_add_segment else 0) if args.new_segment_ids else 2
+        (1 if args.s2s_add_segment else 0) if args.new_segment_ids else 2
     mask_word_id, eos_word_ids, sos_word_id = tokenizer.convert_tokens_to_ids(
         ["[MASK]", "[SEP]", "[S2S_SOS]"])
 
@@ -194,19 +177,8 @@ def main(input_list):
     for model_recover_path in glob.glob(args.model_recover_path.strip()):
         logger.info("***** Recover model: %s *****", model_recover_path)
         model_recover = torch.load(model_recover_path)
-        model = BertForSeq2SeqDecoder.from_pretrained(args.bert_model, state_dict=model_recover,
-                                                      num_labels=cls_num_labels, num_rel=pair_num_relation,
-                                                      type_vocab_size=type_vocab_size, task_idx=3,
-                                                      mask_word_id=mask_word_id, search_beam_size=args.beam_size,
-                                                      length_penalty=args.length_penalty, eos_id=eos_word_ids,
-                                                      sos_id=sos_word_id,
-                                                      forbid_duplicate_ngrams=args.forbid_duplicate_ngrams,
-                                                      forbid_ignore_set=forbid_ignore_set,
-                                                      not_predict_set=not_predict_set, ngram_size=args.ngram_size,
-                                                      min_len=args.min_len, mode=args.mode,
-                                                      max_position_embeddings=args.max_seq_length,
-                                                      ffn_type=args.ffn_type, num_qkv=args.num_qkv,
-                                                      seg_emb=args.seg_emb, pos_shift=args.pos_shift)
+        model = BertForSeq2SeqDecoder.from_pretrained(args.bert_model, state_dict=model_recover, num_labels=cls_num_labels, num_rel=pair_num_relation, type_vocab_size=type_vocab_size, task_idx=3, mask_word_id=mask_word_id, search_beam_size=args.beam_size,
+                                                      length_penalty=args.length_penalty, eos_id=eos_word_ids, sos_id=sos_word_id, forbid_duplicate_ngrams=args.forbid_duplicate_ngrams, forbid_ignore_set=forbid_ignore_set, not_predict_set=not_predict_set, ngram_size=args.ngram_size, min_len=args.min_len, mode=args.mode, max_position_embeddings=args.max_seq_length, ffn_type=args.ffn_type, num_qkv=args.num_qkv, seg_emb=args.seg_emb, pos_shift=args.pos_shift)
         del model_recover
 
         if args.fp16:
@@ -220,17 +192,11 @@ def main(input_list):
         next_i = 0
         max_src_length = args.max_seq_length - 2 - args.max_tgt_length
 
-        # with open(args.input_file, encoding="utf-8") as fin:
-        #     input_lines = [x.strip() for x in fin.readlines()]
-        #     if args.subset > 0:
-        #         logger.info("Decoding subset: %d", args.subset)
-        #         input_lines = input_lines[:args.subset]
-
-        input_lines = input_list
-        if args.subset > 0:
-            logger.info("Decoding subset: %d", args.subset)
-            input_lines = input_lines[:args.subset]
-
+        with open(args.input_file, encoding="utf-8") as fin:
+            input_lines = [x.strip() for x in fin.readlines()]
+            if args.subset > 0:
+                logger.info("Decoding subset: %d", args.subset)
+                input_lines = input_lines[:args.subset]
         data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
         input_lines = [data_tokenizer.tokenize(
             x)[:max_src_length] for x in input_lines]
@@ -281,12 +247,11 @@ def main(input_list):
         if args.output_file:
             fn_out = args.output_file
         else:
-            fn_out = model_recover_path + '.' + args.split
-        # with open(fn_out, "w", encoding="utf-8") as fout:
-        #     for l in output_lines:
-        #         fout.write(l)
-        #         fout.write("\n")
-
+            fn_out = model_recover_path+'.'+args.split
+        with open(fn_out, "w", encoding="utf-8") as fout:
+            for l in output_lines:
+                fout.write(l)
+                fout.write("\n")
 
         if args.need_score_traces:
             with open(fn_out + ".trace.pickle", "wb") as fout_trace:
@@ -294,16 +259,6 @@ def main(input_list):
                     {"version": 0.0, "num_samples": len(input_lines)}, fout_trace)
                 for x in score_trace_list:
                     pickle.dump(x, fout_trace)
-    print(output_lines)
-    return {"Questions" : output_lines}
-
-
-@app.route('/output', methods=['POST'])
-def output():
-    # the request should be array of strings
-    input_list = request.get_json('text')['text']
-    print(input_list)
-    return main(input_list)
 
 
 if __name__ == "__main__":
